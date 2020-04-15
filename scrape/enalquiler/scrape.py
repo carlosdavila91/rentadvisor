@@ -1,54 +1,48 @@
-import pandas as pd
 import grequests, json
-import time
+import time, datetime, itertools
 
 from utils import *
 from bs4 import BeautifulSoup
-from collections import defaultdict
+
+"""
+The process derived from this script is very time consuming
+as the total number of pages to scrape in the forum is 5715.
+Consider using a smaller number for developing.
+
+To set the number of pages to scrape go to utils.py
+"""
 
 # Start timer
 start_time = time.time()
 
-# Main forum page url
-url_list = ["https://www.enalquiler.com/comunidad_alquiler/preguntas_y_respuestas.html"]
+with open('data/enalquiler/links.txt', 'r') as f:
+    links = f.read().splitlines()
 
-# Get the url of each forum page
-url = "https://www.enalquiler.com/comunidad-alquiler/todas/"
+# Divide the list to improve performance
+bins = 102
+list = divide_list(links, bins)
 
-"""
-DISCLAIMER! This process is very time consuming.
-The total amount of pages in the forum page is 5715
-Consider using a smallest number for developing
-"""
+for idx, l in enumerate(list):
 
-pages = 5715
+    keys = ['user','user_category','from','question_category','question_body']
+    dict = {k:[] for k in keys}
 
-for i in range(2,pages):
-    url_list.append(url + str(i))
+    # Get the responses
+    resp = grequest_pipe(l)
 
-links = get_question_links(url_list)
+    # Scrape!
+    for r in resp:
+        soup = BeautifulSoup(r.text, 'html.parser')
+        temp = scrape_page(soup, dict)
+        dict.update(temp)
 
-reqs = (grequests.get(link) for link in links)
-resp = grequests.imap(reqs, grequests.Pool(10))
+    # Save to data frame
+    dict_to_csv(dict, idx)
 
-keys = ['user','user_category','question_body','question_category']
-dict = {k:[] for k in keys}
+    pctge = (idx+1)/(len(list)+1) * 100
+    print("Completed {}% of the process".format(round(pctge, 1)), end='\r')
 
-for r in resp:
-   soup = BeautifulSoup(r.text, 'html.parser')
-   temp_dict = EnalquilerForumScrape(soup)
-   for k in keys:
-       dict[k].extend(temp_dict[k])
 
-df = pd.DataFrame(
-    {
-        'User Name':dict['user'],
-        'User Category':dict['user_category'],
-        'Question Body':dict['question_body'],
-        'Question Category':dict['question_category']
-    }
-)
+elapsed = datetime.timedelta(seconds=time.time() - start_time)
 
-df.to_csv('data/enalquiler/enalquiler.csv', index=False, encoding='utf-8')
-
-print("--- {} seconds ---".format(time.time() - start_time))
+print("--- {0} seconds ---".format(elapsed))
