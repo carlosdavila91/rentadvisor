@@ -54,43 +54,50 @@ def scrape_page(soup, dict):
         # Overflow: html branch with question content
         overflow = el.find('div', class_='overflow')
 
-        u = left_block.find('p', class_='user-name')
-        c = left_block.find('p', class_='user-category')
-
-        d = overflow.find('li', text=re.compile('Hace'))
-        qc = overflow.find('a', {'class':False,'href':has_no_usuario})
-        q = overflow.find('div',class_='question-body')
-
         try:
+            u = left_block.find('p', class_='user-name')
             dict['user'].append(u.string)
-            dict['user_category'].append(c.string)
-            dict['from'].append(d.string)
-            dict['question_category'].append(qc.string)
-            dict['question_body'].append(q.get_text().strip("\n| "))
         except:
             dict['user'].append(None)
+
+        try:
+            c = left_block.find('p', class_='user-category')
+            dict['user_category'].append(c.string)
+        except:
             dict['user_category'].append(None)
+
+        try:
+            d = overflow.find('li', text=re.compile('Hace'))
+            dict['from'].append(d.string)
+        except:
             dict['from'].append(None)
+
+        try:
+            qc = overflow.find('a', {'class':False,'href':has_no_usuario})
+            dict['question_category'].append(qc.string)
+        except:
             dict['question_category'].append(None)
+
+        try:
+            q = overflow.find('div',class_='question-body')
+            dict['question_body'].append(q.get_text().strip("\n| "))
+        except:
             dict['question_body'].append(None)
 
     return dict
 
 
 def dict_to_csv(dict, idx):
-    df = pd.DataFrame(
-        {
-            'User Name':dict['user'],
-            'User Category':dict['user_category'],
-            'From':dict['from'],
-            'Question Category':dict['question_category'],
-            'Question Body':dict['question_body']
-        }
-    )
-    if idx < 10:
+    s1 = pd.Series(dict['user'], name='User Name')
+    s2 = pd.Series(dict['user_category'], name='User Category')
+    s3 = pd.Series(dict['from'], name='Date')
+    s4 = pd.Series(dict['question_category'], name='Question Category')
+    s5 = pd.Series(dict['question_body'], name='Question Body')
+    df = pd.concat([s1,s2,s3,s4,s5], axis=1)
+
+    if idx < 9:
         filename = 'data/enalquiler/enalquiler_0'+str(idx + 1)+'.csv'
     else:
         filename = 'data/enalquiler/enalquiler_'+str(idx + 1)+'.csv'
 
     df.to_csv(filename, index=False, encoding='utf-8')
-    # print("The resulting csv has {} rows.".format(df.shape[0]))
