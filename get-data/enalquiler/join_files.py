@@ -11,8 +11,8 @@ DATA_PATH = "/data/enalquiler/"
 filename = "enalquiler_01.csv"
 full_path = PATH + DATA_PATH + filename
 
-data = pd.read_csv(full_path)
-length = len(data)
+enalq = pd.read_csv(full_path)
+length = len(enalq)
 
 for i in range (2,89):
     if i < 10:
@@ -23,13 +23,13 @@ for i in range (2,89):
     temp_data = pd.read_csv(file)
     length += len(temp_data)
 
-    data = pd.concat([data,temp_data], axis=0)
+    enalq = pd.concat([enalq,temp_data], axis=0)
 
-data.reset_index(inplace=True, drop=True)
+enalq.reset_index(inplace=True, drop=True)
 
-if length == data.shape[0]:
+if length == enalq.shape[0]:
     print("Data has been correctly loaded")
-    print("It has {} rows and {} columns".format(data.shape[0], data.shape[1]))
+    print("It has {} rows and {} columns".format(enalq.shape[0], enalq.shape[1]))
 else:
     print("Some data might be missed when loading")
 
@@ -40,29 +40,35 @@ ref_day = dt.datetime.strptime(ref_day, "%Y-%m-%d")
 # Change Date string from `Hace 5 años/meses` to `2015-01-01` or `2019-11-01`
 # - Floor day of month if year is 2019
 # - Floor year if year is older than 2019
-data["Aproximate Date"] = np.nan
+enalq["Aproximate Date"] = np.nan
 
-for i in range(0, len(data)):
-    string = str(data.iloc[i,2])
+for i in range(0, len(enalq)):
+    string = str(enalq.iloc[i,2])
     try:
         if re.match(".*meses.*", string):
             num = int(''.join(filter(str.isdigit, string)))
             date = ref_day - relativedelta(months=num)
             date = date.replace(day=1)
-            data.at[i,"Aproximate Date"] = date
+            enalq.at[i,"Aproximate Date"] = date
         elif re.match(".*año.*", string):
             num = int(''.join(filter(str.isdigit, string)))
             date = ref_day - relativedelta(years=num)
             date = date.replace(month=1, day=1)
-            data.at[i,"Aproximate Date"] = date
+            enalq.at[i,"Aproximate Date"] = date
         else:
-            data.at[i,"Aproximate Date"] = None
+            enalq.at[i,"Aproximate Date"] = None
     except:
-        data.at[i,"Aproximate Date"] = None
+        enalq.at[i,"Aproximate Date"] = None
 
-data['Aproximate Date'] =  pd.to_datetime(data['Aproximate Date'], format='%Y%m%d').dt.to_period('M').dt.to_timestamp()
+enalq['Aproximate Date'] =  pd.to_datetime(enalq['Aproximate Date'], format='%Y%m%d').dt.to_period('M').dt.to_timestamp()
 
 # Save data
-data = data[['User Name', 'User Category', 'Aproximate Date', 'Question Body']]
+enalq = enalq[['User Name', 'User Category', 'Aproximate Date', 'Question Body']]
 
-data.to_csv(PATH+DATA_PATH+"enalquiler_all.csv", index=False)
+names = enalq.columns.values.tolist()
+names = [re.sub("\ ", "_", n) for n in names]
+
+enalq.columns = names
+enalq = enalq.rename(str.lower, axis=1)
+
+enalq.to_csv(PATH+DATA_PATH+"enalquiler.csv", index=False)
